@@ -143,7 +143,7 @@ def extract_sss_signal_difference(trust_subset, nte, auto=True, override_inversi
     if override_inversion: # just incase the automatic inversion doesn't work right, still allow user-specified inversion
         trust_diff = -trust_diff
         trust_diff_full = -trust_diff_full
-        print('Manual inversion specified (possibly in addition to automatic inversion)')
+        print('Additional manual inversion specified')
         
     # query for superior saggital sinus
     imslice = 0
@@ -276,8 +276,6 @@ def t2_from_trust(trust_data, blood_t1, ete=[0, 40, 80, 160], auto=True, overrid
         an arbitrary number of repeated measures for each echo time as long as the repeats
         are contiguous. The number of repeated measures will be inferred.
         
-        If using a matrix obtain from helpers.general.reorganize_parrec(), this
-        formatting can be obtained with vs[:, :, 0, :, 0, 0, 0, :]
         
     blood_t1 : float
         the blood t1 in seconds (?)

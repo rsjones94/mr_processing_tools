@@ -113,11 +113,12 @@ def unpack_dims(data, vlabels):
         
         The vlabels are returned as part of parrec_to_nifti. They can also be found as
         an ordered dict with parrecobject.header.get_volume_labels() (but you must
-        convert to an DataFrame). A NiFTi using parrec_to_nifti may also have the labels
+        convert to a DataFrame). A NiFTi using parrec_to_nifti may also have the labels
         saved as an Excel file
         
-        Note that you change the order of the column of vlabels,
-        and this will change the order of the returned dimensions of the output
+        Note that you can change the order of the column of vlabels
+        and this will change the order of the returned dimensions of the output.
+        Often, functions using 4+ dimension data expect the dimensions to be in a certain order
 
     Returns
     -------

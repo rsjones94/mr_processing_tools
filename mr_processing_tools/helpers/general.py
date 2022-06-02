@@ -339,7 +339,7 @@ def mask_image_by_cornervals(img, box_size, thresh_mod=1):
         masked_sli = sli > thresh_val
         msk[:,:,i] = masked_sli
         
-        print(thresh_val)
+        #print(thresh_val)
         
     return msk
 

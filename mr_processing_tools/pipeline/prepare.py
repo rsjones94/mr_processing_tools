@@ -68,7 +68,7 @@ reg_to_t1 = 1
 determine = 1
 
 for opt, arg in options:
-    if opt in ('-s', '--specfile'):
+    if opt in ('-p', '--pspecfile'):
         in_file = arg
     elif opt in ('-f', '--find'):
         seek = arg
@@ -101,7 +101,12 @@ except AssertionError:
 
 pattern_file = in_file
 data_folder = pathlib.Path(pattern_file).parent.absolute()
-native_folder = data_folder.parent.absolute()
+native_folder = data_folder.absolute()
+
+standard_folder = os.path.join(native_folder, 'standard')
+
+if not os.path.exists(standard_folder):
+    os.mkdir(standard_folder)
 
 
 # finds files matching the patterns specified in your patterns.xlsx
@@ -161,8 +166,8 @@ if convert:
         new_bn = f'{scan_type}.nii.gz'
         vlabels = f'{scan_type}_vlabels.xlsx'
         
-        new_file_loc = os.path.join(native_folder, new_bn)
-        vlabels_loc = os.path.join(native_folder, vlabels)
+        new_file_loc = os.path.join(standard_folder, new_bn)
+        vlabels_loc = os.path.join(standard_folder, vlabels)
         
         print(f'Converting and normalizing indices for {scan_type} ({orig_bn}) ({i+1} of {len(loaded_patterns)})')
         
@@ -192,10 +197,10 @@ if reg_to_t1:
     t1_row = sorted_patterns[sorted_patterns['Is T1']=='1'].iloc[0]
     t1_name = t1_row['Scan name']
     f_val = float(t1_row['f'])
-    t1_location = os.path.join(native_folder, f'{t1_name}.nii.gz')
-    t1_location_betted = os.path.join(native_folder, f'{t1_name}_BET.nii.gz')
-    fast_location_betted = os.path.join(native_folder, f'{t1_name}_BET_FAST')
-    t1_wm_location = os.path.join(native_folder, f'{t1_name}_BET_FAST_pve_2.nii.gz')
+    t1_location = os.path.join(standard_folder, f'{t1_name}.nii.gz')
+    t1_location_betted = os.path.join(standard_folder, f'{t1_name}_BET.nii.gz')
+    fast_location_betted = os.path.join(standard_folder, f'{t1_name}_BET_FAST')
+    t1_wm_location = os.path.join(standard_folder, f'{t1_name}_BET_FAST_pve_2.nii.gz')
     
     # first thing: BET the T1
     print('Primary: extracting brain from T1')
@@ -203,7 +208,7 @@ if reg_to_t1:
     print('Primary: FASTing T1')
     fast(t1_location_betted, out=fast_location_betted, n_classes=3)
     
-    t1space_folder = os.path.join(native_folder, 't1space')
+    t1space_folder = os.path.join(standard_folder, 't1space')
     if not os.path.exists(t1space_folder):
         os.mkdir(t1space_folder)
     
@@ -223,15 +228,15 @@ if reg_to_t1:
         
         print(f'\tSecondary: registering {scan_type}')
         
-        scan_location = os.path.join(native_folder, f'{scan_type}.nii.gz')
-        omat_location = os.path.join(native_folder, f'{scan_type}_to_t1space.omat')
+        scan_location = os.path.join(standard_folder, f'{scan_type}.nii.gz')
+        omat_location = os.path.join(standard_folder, f'{scan_type}_to_t1space.omat')
         
         scan_location_in_t1space = os.path.join(t1space_folder, f'{scan_type}_t1space.nii.gz')
         
         if reg_method=='0': # file is already in T1 space
             continue
         elif reg_method=='1': # register using FLIRT
-            scan_location_betted = os.path.join(native_folder, f'{scan_type}_BET.nii.gz')
+            scan_location_betted = os.path.join(standard_folder, f'{scan_type}_BET.nii.gz')
             bet(scan_location, scan_location_betted)
             flirt(src=scan_location_betted, ref=t1_location_betted, omat=omat_location)
         elif reg_method=='2': # register using epi_reg
@@ -242,7 +247,7 @@ if reg_to_t1:
             
             to_remove = ['_fast_wmedge.nii.gz', '_fast_wmseg.nii.gz', '_init.mat', '.nii.gz']
             for tr in to_remove: # some intermediate files we want to clean up
-                file_to_remove = os.path.join(native_folder, f'{base_out}{tr}')
+                file_to_remove = os.path.join(standard_folder, f'{base_out}{tr}')
                 os.remove(file_to_remove)
         elif reg_method=='-1': # file should not be converted to T1 space
             continue
@@ -250,13 +255,13 @@ if reg_to_t1:
             # if parameters are correctly specified, then this branch
             # handles cases where reg_method is the name of a scan
             # in this case, we use that scan's omat instead of generating a new one
-            reference_omat = os.path.join(native_folder, f'{reg_method}_to_t1space.omat')
+            reference_omat = os.path.join(standard_folder, f'{reg_method}_to_t1space.omat')
             shutil.copyfile(reference_omat, omat_location)
             
         
         flirt(scan_location, ref=t1_location, out=scan_location_in_t1space,
               applyxfm=1, init=omat_location, interp='trilinear')
-    
+
     
 if determine:
     print('\nRunning DETERMINE')

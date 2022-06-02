@@ -9,29 +9,23 @@ import sys
 sys.path.append('..')
 
 import numpy as np
-from scipy import stats
 import scipy
-from scipy import signal
-import statsmodels.stats.api as sms
-import pandas as pd
-from scipy.optimize import curve_fit
-from scipy.stats.distributions import  t
-from skimage.filters import threshold_otsu
 
 import helpers.general as ge
 
-def quantify_cbf_from_asl(asl_data, m0_data, pld, ld):
+def quantify_cbf_from_asl(asl_data, m0_data, pld, ld, blood_t1=1.65):
     
     # pCASL ONLY
     # asl_data should have dimensions of (x, y, z, dyn, asltype)
     # legacy has (x, y, asltype, z, dyn)
+    # blood t1 in s
     
     # m0_data should have dimensions of dimensions of (x, y, z)
     # true of legacy too
     
     
     # sliding window average (e.g. mean(C1,C2) - L1)
-    # dmb[:,:,:,i] is the sum of the ith and i+1th control image, divided by the ith label image
+    # dmb[:,:,:,j] is the mean of the jth and j+1th control image, minus the jth label image
     # dmb necessarily has one less dynamic than asl_data
     dmb = np.zeros_like(asl_data[:,:,:,:-1,0])
     for j in range(dmb.shape[3]-1):
@@ -60,7 +54,8 @@ def quantify_cbf_from_asl(asl_data, m0_data, pld, ld):
     # gw = 2.0 # the post-labeling delay (s) note: this should be updated by slice changed from 1.8 on 01/19/2018
     # gtau = 1.8 # the labeling duration (s) changed from 1.65 on 01/19/2018  changed again to 1.8 on 08/24/2021
     gtau = ld
-    gt1ab = 1.65  # t1 of blood water (s)
+    #gt1ab = 1.65  # t1 of blood water (s)
+    gt1ab = blood_t1
     #gt1aa = 1.44  # t1 of blood water during carbogen (s)
     #lamb = 0.9 # ml/g. note the lambda (lowercase) is a python keyword for a lambda function
     #a = 0.85 # labeling efficiency
@@ -74,9 +69,10 @@ def quantify_cbf_from_asl(asl_data, m0_data, pld, ld):
 
 
     for nz in range(m0_data.shape[2]):
+        print(f'\tQuantifying slice {nz+1} of {m0_data.shape[2]}')
         for nx in range(m0_data.shape[0]):
             for ny in range(m0_data.shape[1]):
-                print(f'{nx,ny,nz} / {m0_data.shape}')
+                #print(f'{nx,ny,nz} / {m0_data.shape}')
                 if msk[nx,ny,nz]==1:
                     
                     
@@ -115,10 +111,8 @@ def quantify_cbf_from_asl(asl_data, m0_data, pld, ld):
     # not neccessary to manually threshold the results if the optimization method is compatible with bounds
     #adjusted_fmatb[adjusted_fmatb < LB*cfact] = LB*cfact
     #adjusted_fmatb[adjusted_fmatb > UB*cfact] = UB*cfact
-        
 
     # fmatb is the cbf
-    # need to reverse the y dim
     
     return adjusted_fmatb
 
