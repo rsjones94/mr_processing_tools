@@ -7,7 +7,7 @@ the superior sagittal sinus. It then applies a number of models to quantify
 venous oxygenation.
 
 The script will create:
-    1) a folder in the TRUST images directory called 'trust'
+    1) a folder in the TRUST image directory called 'trust'
     2) an excel spreadsheet in this folder called 't2_vals.xlsx' that contains the T2 (s) for each acquisition
     3) an excel spreadhseet called 'fits.xlsx' that contains exponential fits for each acquisition with confidence intervals
     4) an excel spreadsheet called 'signals.xlsx' that gives the signal at each ete with confidence intervals

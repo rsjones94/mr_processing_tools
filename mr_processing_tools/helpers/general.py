@@ -261,7 +261,7 @@ def scale_parrec_data(unscaled_data, scaling_factors):
 
 
 
-def fun_pcasl_wang_tissue(x, fmdata, pdelta_a, pdelta, pw, ptau, pt1a):
+def fun_pcasl_wang_tissue(x, fmdata, pdelta_a, pdelta, pw, ptau, pt1a, lab_eff):
     # minimization function for pCASL
     # Wang J et al. MRM 48:242-254 (2002)
     # Note this assumes that blood water has reached the capillary exchange
@@ -269,7 +269,7 @@ def fun_pcasl_wang_tissue(x, fmdata, pdelta_a, pdelta, pw, ptau, pt1a):
     # note that fmdata is deltaM/M0tissue
     
     f = x[0] # cbf to solve for (ml/g/s)
-    a = 0.85 # labeling efficiency
+    a = lab_eff # labeling efficiency
     r1t = 1/1.3 # r1 of unperfused brain tissue (s^-1)
     lam  = 0.9 # blood brain partition coefficient (ml/g). this is lambda
     

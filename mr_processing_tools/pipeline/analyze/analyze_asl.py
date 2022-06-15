@@ -19,6 +19,16 @@ input:
     -c - / --hct : hematocrit
         optional. used to calculate blood t1
         if not specified, blood t1 is assumed to be 1650ms (hct~=0.4345)
+    -e - / --labeff : labeling efficiency
+        optional. if not specified, assumed to be 0.85
+        For BOLD processing 0.85 is standard
+        For SCD, 0.72
+        Otherwise 0.91
+    -t - / --ttt : the tissue transit time in seconds
+        optional. if not specified assumed to be 1.5
+        For BOLD processing 1.500 is standard
+        For SCD, 1.290
+        Otherwise 1.400
     -h / --help : brings up this helpful information. does not take an argument
 """
 
@@ -48,9 +58,11 @@ from processing.asl_funcs import quantify_cbf_from_asl
 
 inp = sys.argv
 bash_input = inp[1:]
-options, remainder = getopt.getopt(bash_input, "a:m:p:l:t:h", ["asl=", 'm0=', 'pld=', 'ld=', 'tr=', 'help'])
+options, remainder = getopt.getopt(bash_input, "a:m:p:l:c:e:t:h", ["asl=", 'm0=', 'pld=', 'ld=', 'hct=', 'labeff=', 'ttt=', 'help'])
 
 blood_t1 = 1650
+labeling_efficiency = 0.85
+tissue_transit_time = 1.5
 for opt, arg in options:
     if opt in ('-a', '--asl'):
         asl_file = arg
@@ -65,6 +77,10 @@ for opt, arg in options:
     if opt in ('-c', '--hct'):
         hct = float(arg)
         blood_t1 = calculate_blood_t1(hct)
+    if opt in ('-t', '--ttt'):
+        tissue_transit_time = float(arg)
+    if opt in ('-e', '--labeff'):
+        labeling_efficiency = float(arg)
     elif opt in ('-h', '--help'):
         print(help_info)
         sys.exit()
@@ -99,7 +115,9 @@ vlabels_ordered = vlabels_loaded[ordering]
 asl_unpacked = unpack_dims(asl_in_data, vlabels_ordered)
 
 print('Quantifying CBF....')
-cbf_map = quantify_cbf_from_asl(asl_unpacked, m0_in_data, pld_s, ld_s, blood_t1_s)
+cbf_map = quantify_cbf_from_asl(asl_unpacked, m0_in_data, pld_s, ld_s,
+                                blood_t1=blood_t1_s, ttt=tissue_transit_time,
+                                label_eff=labeling_efficiency)
 print('Finished quantification')
 
 cbf_out_loc = os.path.join(asl_loc, 'cbf.nii.gz')

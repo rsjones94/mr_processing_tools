@@ -124,7 +124,7 @@ def unpack_dims(data, vlabels):
     -------
     new_data : np array
         The data with the 4th dimension unpacked into n additional dimensions, where
-        n is the number of columns in vlabels. For example, if relabels has three columns,
+        n is the number of columns in vlabels. For example, if velabels has three columns,
         then the 4th dimension of the original data will become the 4th, 5th and 6th dimensions
         in new_data. The 1st column in vlabels will be stored as the 4th dimension, the 2nd
         column in vlabels will be stored as the 5th dimension, and so on

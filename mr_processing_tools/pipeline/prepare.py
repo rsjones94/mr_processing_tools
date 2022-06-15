@@ -33,6 +33,11 @@ input:
     -d / --determine : whether to run the "determine" step of processing. 0 (do not run) or 1 (run)
         Default is 1.
         the especfile is always saved as 'execution_specs.xlsx' in the same folder as the pspecfile
+    -s / --special : special processing params
+        As of right now, the only special param is biomarker,[mrid]
+            This pulls data from the SCD biomarker study database using mrid as an indexer
+            and also sets ASL labeling efficiency and tissue transit times appropriately
+            depending on whether the participant is a control or has SCD
     -h / --help : brings up this helpful information. does not take an argument
 """
 
@@ -58,7 +63,7 @@ from helpers.conversion import parrec_to_nifti, unpack_dims
 
 inp = sys.argv
 bash_input = inp[1:]
-options, remainder = getopt.getopt(bash_input, "p:f:c:w:d:h", ["pspecfile=", "find=", 'convert=', 'warp=', 'determine=', 'help'])
+options, remainder = getopt.getopt(bash_input, "p:f:c:w:d:s:h", ["pspecfile=", "find=", 'convert=', 'warp=', 'determine=', 'special=', 'help'])
 
 
 
@@ -71,19 +76,24 @@ for opt, arg in options:
     if opt in ('-p', '--pspecfile'):
         in_file = arg
     elif opt in ('-f', '--find'):
-        seek = arg
+        seek = int(arg)
     elif opt in ('-c', '--convert'):
-        convert = arg
+        convert = int(arg)
     elif opt in ('-w', '--warp'):
-        reg_to_t1 = arg
+        reg_to_t1 = int(arg)
     elif opt in ('-d', '--determine'):
-        determine = arg
+        determine = int(arg)
+    elif opt in ('-s', '--special'):
+        special = arg
     elif opt in ('-h', '--help'):
         print(help_info)
         sys.exit()
 
+if 'biomarker' in special:
+    mrid = special.split(",")[1]
         
 if os.path.isdir(in_file):
+    # pull some special SCD data
     in_file = os.path.join(in_file, 'pattern_specs.xlsx')
     
 try:
@@ -116,7 +126,7 @@ if seek:
     match_cols = [j for j in loaded_patterns.columns if 'match' in j.lower()]
     exclude_cols = [j for j in loaded_patterns.columns if 'exclude' in j.lower()]
     
-    add_cols = ['File found', 'N found']
+    add_cols = ['File found', 'n found']
     for ac in add_cols:
         loaded_patterns[ac] = None
     
@@ -266,11 +276,115 @@ if reg_to_t1:
 if determine:
     print('\nRunning DETERMINE')
     espec_template = os.path.join(three_up, 'bin', 'execution_specs.xlsx')
+    target_espec = os.path.join(standard_folder, 'execution_specs.xlsx')
+    xls = pd.ExcelFile(espec_template)
     
-    loaded_patterns = pd.read_excel(pattern_file, dtype=str)
+    loaded_patterns = pd.read_excel(pattern_file)
+    loaded_patterns = loaded_patterns.set_index('Scan name')
+
+    # need custom code for each sheet to handle the processing input
     
-    
+    can_run = []
+    cant_run = []
+    guessed_vals = []
+    updated_dfs = []
+    # vols
+    for sheet_name in xls.sheet_names:
+        loaded_template = pd.read_excel(xls,
+                                        sheet_name=sheet_name,
+                                        dtype=str)
+        loaded_template = loaded_template.set_index('arg')
+        if sheet_name=='vols':
+            if loaded_patterns.loc['t1']['n found']:
+                loaded_template.at['t1', 'value'] = loaded_patterns.loc['t1']['File found']
+                
+        if sheet_name=='asl':
+            if loaded_patterns.loc['pcasl']['n found']:
+                loaded_template.at['pcasl', 'value'] = loaded_patterns.loc['pcasl']['File found']
+                
+            if loaded_patterns.loc['aslm0']['n found']:
+                loaded_template.at['aslm0', 'value'] = loaded_patterns.loc['aslm0']['File found']
+                
+            pld = 1800
+            ld = 1600
+            hct = 0.7
             
+            loaded_template.at['pld', 'value'] = pld
+            loaded_template.at['ld', 'value'] = ld
+            loaded_template.at['hct', 'value'] = hct
+            
+            loaded_template.at['pld', 'guessed'] = 1
+            loaded_template.at['ld', 'guessed'] = 1
+            loaded_template.at['hct', 'guessed'] = 1
+            
+        if sheet_name=='trust':
+            if loaded_patterns.loc['trust']['n found']:
+                loaded_template.at['trust', 'value'] = loaded_patterns.loc['trust']['File found']
+                
+            hct=0.7
+            
+            loaded_template.at['hct', 'value'] = hct
+
+            loaded_template.at['hct', 'guessed'] = 1
+        
+        if sheet_name=='ase':
+            if loaded_patterns.loc['ase']['n found']:
+                loaded_template.at['ase', 'value'] = loaded_patterns.loc['ase']['File found']
+        
+        if sheet_name=='bold':
+            # not implemented
+            updated_dfs.append(None)
+            continue
+        
+        if sheet_name=='regionstats':
+            if loaded_patterns.loc['t1']['n found']:
+                loaded_template.at['t1', 'value'] = loaded_patterns.loc['t1']['File found']
+        
+        
+        
+        runner = 1
+        for i,row in loaded_template.iterrows():
+            if row['guessed']==1:
+                guessed_vals.append(f'{sheet_name} : {i} = {row["value"]}')
+                
+            if float(row['required'])==1 and row['value'] in [np.nan, None, '']:
+                # we don't have everything we need to run this
+                #print(f'You do not have {row.index[0]} (it is {row["value"]})')
+                runner = 0
+                
+        loaded_template.at['DORUN', 'value'] = runner
+        updated_dfs.append(loaded_template)
+        
+        if runner:
+            can_run.append(sheet_name)
+        else:
+            cant_run.append(sheet_name)
+            
+    
+    print(f'\nYou can run the following processing sequences: {can_run}')
+    print(f'You can NOT run the following processing sequences: {cant_run}')
+    
+    if guessed_vals:
+        guessed = "\n\t".join(guessed_vals)
+        print(f'\nAlso, I could not find the following values, and had to guess them:\n\t{guessed}')
+        
+        
+    writer = pd.ExcelWriter(target_espec, engine='xlsxwriter')
+    
+    for sheet_name, df in zip(xls.sheet_names, updated_dfs):
+        if df is None:
+            continue
+        df.to_excel(writer, sheet_name=sheet_name)
+        
+    writer.save()
+        
+        
+        
+        
+        
+        
+        
+        
         
         
     

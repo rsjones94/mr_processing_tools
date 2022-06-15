@@ -1,5 +1,6 @@
 # local paths
 bin/paths.txt
+_secret_keys/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -13,7 +13,7 @@ import scipy
 
 import helpers.general as ge
 
-def quantify_cbf_from_asl(asl_data, m0_data, pld, ld, blood_t1=1.65):
+def quantify_cbf_from_asl(asl_data, m0_data, pld, ld, blood_t1=1.65, ttt=1.5, label_eff=0.85):
     
     # pCASL ONLY
     # asl_data should have dimensions of (x, y, z, dyn, asltype)
@@ -50,7 +50,7 @@ def quantify_cbf_from_asl(asl_data, m0_data, pld, ld, blood_t1=1.65):
     #dmm0 = 0.005 # delta M / M0
     cfact = 6000 # convert from ml/g/s to ml/100g/min
     gdelta_a = 0.5 # the arterial transit time (s)
-    gdelta = 1.5 # the tissue transit time (s)
+    gdelta = ttt # the tissue transit time (s). SCD, this is usually about 1.290. otherwise it's 1.4. 1.5 for BOLD
     # gw = 2.0 # the post-labeling delay (s) note: this should be updated by slice changed from 1.8 on 01/19/2018
     # gtau = 1.8 # the labeling duration (s) changed from 1.65 on 01/19/2018  changed again to 1.8 on 08/24/2021
     gtau = ld
@@ -58,7 +58,7 @@ def quantify_cbf_from_asl(asl_data, m0_data, pld, ld, blood_t1=1.65):
     gt1ab = blood_t1
     #gt1aa = 1.44  # t1 of blood water during carbogen (s)
     #lamb = 0.9 # ml/g. note the lambda (lowercase) is a python keyword for a lambda function
-    #a = 0.85 # labeling efficiency
+    labeling_efficiency = label_eff # labeling efficiency. in SCD this is usually about 0.72, otherwise it's 0.91. .85 for BOLD. this is sometimes called 'a'
     wz = np.arange(pld, (pld+slicetimesec*m0_data.shape[2])+slicetimesec, slicetimesec) # the corrected PLD for slice timing
     
     # Initial parameters for fmincon  =  =  =  =  =  =  =  =  =  =  =  =  = 
@@ -77,7 +77,7 @@ def quantify_cbf_from_asl(asl_data, m0_data, pld, ld, blood_t1=1.65):
                     
                     
                     res = scipy.optimize.minimize(fun=ge.wang_pcasl_func, x0=x0,
-                                                        args=(mdmm0b[nx,ny,nz], gdelta_a, gdelta, wz[nz], gtau, gt1ab), # gw+slicetimesec*(nz) -> wz
+                                                        args=(mdmm0b[nx,ny,nz], gdelta_a, gdelta, wz[nz], gtau, gt1ab, labeling_efficiency), # gw+slicetimesec*(nz) -> wz
                                                         bounds=bounds,
                                                         method='SLSQP'
                                                         )
