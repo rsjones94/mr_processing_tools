@@ -55,6 +55,57 @@ assert os.path.isfile(especfile)
     
     
             
-        
-        
+# basically just read in the especfile. check if DORUN is true on each tab.
+# if so, then make a call to the corresponding function (in the sheetname) using
+# the arg and value columns to make the arguments
+
+xls = pd.ExcelFile(especfile)
+
+# need custom code for each sheet to handle the processing input
+calls = []
+funcs = []
+
+this_file = pathlib.Path(__file__)
+parent_dir = os.path.dirname(os.path.normpath(this_file))
+print()
+for sheet_name in xls.sheet_names:
+    loaded_template = pd.read_excel(xls,
+                                    sheet_name=sheet_name,
+                                    dtype=str)
+    loaded = loaded_template.set_index('arg')
+    if loaded.loc['DORUN']['value'] != '1':
+        print(f"{sheet_name} was spec'd' to not run")
+        continue
+    
+    arg_construction = [f"--{arg} {row['value']}" for arg,row in loaded.iterrows() if not row['value'] in (np.nan, None, '') and not arg=='DORUN']
+    args = ' '.join(arg_construction)
+    function_to_call = f'analyze_{sheet_name}.py'
+    function_path = os.path.join(parent_dir, 'analyze', function_to_call)
+    call = f'{function_path} {args}'
+    calls.append(call)
+    funcs.append(sheet_name)
+    
+    
+print('\nThe following calls are specified:')
+for c,f in zip(calls,funcs):
+    print(f'\n\t{f}\n\t\t{c}')
+
+do_proceed = False
+valid_yes = ['y', 'yes']
+valid_no = ['n',  'no']
+while not do_proceed:
+    feedback = input('\nProceed?\n\t')
+    if feedback.lower() in valid_yes:
+        do_proceed = True
+    elif feedback.lower() in valid_no:
+        raise Exception('User terminated processing')
+    else:
+        print('just yes or no, please')
+    
+    
+print('Calling....')
+
+for c,f in zip(calls,funcs):
+    print(f'\t{f}')
+    os.system(c)
     

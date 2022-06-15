@@ -52,6 +52,7 @@ def manual_sss(trust_diff, r=3):
         
         imask = ax.imshow(circ_ma, alpha=0.5, cmap=palette, vmin=0, vmax=1)
         fig.canvas.draw()
+        plt.draw()
         fig.waitforbuttonpress() # button press will change value of coords
         if None not in coords:
             imask.set_visible(False)

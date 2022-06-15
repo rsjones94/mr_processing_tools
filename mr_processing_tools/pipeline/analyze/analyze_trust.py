@@ -21,9 +21,9 @@ required input:
     -c / --hct : the hematocrit as a float between 0 and 1
 essentially required input:
     -y / --ya : the arterial oxygen saturation as a float between 0 and 1
-        optional, but if not specified then OEF cannot be calculated
+        assumed to be 0.98 if not specified
     -s / --hbs : the hemoglobin s fraction as a float between 0 and 1
-        optional, but if not supplied then some Yv models can not be used
+        assumed to be 1 if not specified
 optional input:
     -e / --ete : the echo times in ms as comma-separated values
         default is 0,40,80,160
@@ -34,7 +34,7 @@ optional input:
         note that the intensities are automatically inverted (or not) already to make the
         SSS bright against a dark background If this automatic inversion does not work, then
         manually specify which acquisitions needs to be inverted. For example, if you have
-        two acquisitions, and want to inver the second, then pass --invert 0,1
+        two acquisitions, and want to invert the second, then pass --invert 0,1
     -h / --help : brings up this helpful information. does not take an argument
 """
 
@@ -61,7 +61,6 @@ from helpers.conversion import parrec_to_nifti, unpack_dims
 from helpers.general import read_xfm, calculate_blood_t1
 from processing.trust_funcs import t2_from_trust
 import helpers.oxsat_models as osm
-
 ####
 
 inp = sys.argv
@@ -71,9 +70,9 @@ options, remainder = getopt.getopt(bash_input, "t:c:y:s:e:a:i:h",
 
 
 hct = None
-hbs = None
-ya = None
-auto = 1
+hbs = 1
+ya = 0.98
+auto = True
 inverter = None
 etes = [0,40,80,160]
 '''
@@ -97,10 +96,10 @@ for opt, arg in options:
         ete_split = ete_string.split(',')
         etes = [float(i) for i in ete_split]
     if opt in ('-a', '--auto'):
-        auto = int(arg)
+        auto = bool(int(arg))
     if opt in ('-i', '--invert'):
         invert_string = arg
-        if invert_string.lower() == 'none':
+        if invert_string.lower() == 'none' or invert_string=='0':
             inverter = None
         else:
             invert_split = invert_string.split(',')
@@ -136,6 +135,7 @@ vlabels_ordered = vlabels_loaded[ordering]
 trust_unpacked = unpack_dims(trust_data, vlabels_ordered)
 trust_clean = trust_unpacked[:,:,0,:,:] # dim 3 (z) should be a singleton
 
+
 t2s, signals, fits = t2_from_trust(trust_clean,
                                    blood_t1,
                                    ete=etes, 
@@ -153,10 +153,12 @@ model_file = os.path.join(trust_loc, 'models.xlsx')
 mean_t2 = np.mean(t2s)
 t2_df = pd.DataFrame()
 
-t2_write = mean_t2.copy()
-t2_write.append(mean_t2)
+
+#t2_write = mean_t2.copy()
+#t2_write.append(mean_t2)
+t2_write = t2s.copy()
 acq_write = acqs.copy()
-acq_write.append('mean')
+#acq_write.append('mean')
 
 t2_df['acq'] = acq_write
 t2_df['t2_s'] = t2_write
@@ -178,10 +180,10 @@ writer.save()
 yvs = []
 oefs = []
 
-oxsat_funcs = []
-oxsat_func_names = []
+oxsat_funcs = [osm.bovine_oxsat, osm.aa_oxsat, osm.ss_oxsat, osm.f_oxsat, osm.mixture_oxsat]
+oxsat_func_names = ['bovine', 'wood_aa', 'wood_ss', 'fetal', 'mixture']
 for fun, name in zip(oxsat_funcs, oxsat_func_names):
-    yv = fun(mean_t2, hct)
+    yv = fun(mean_t2, hct, hbs=hbs)
     oef = (ya - yv) / ya
     
     yvs.append(yv)

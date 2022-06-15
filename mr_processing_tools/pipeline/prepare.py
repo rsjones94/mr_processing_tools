@@ -34,7 +34,7 @@ input:
         Default is 1.
         the especfile is always saved as 'execution_specs.xlsx' in the same folder as the pspecfile
     -s / --special : special processing params
-        As of right now, the only special param is biomarker,[mrid]
+        As of right now, the only special param is biomarkers,[mrid]
             This pulls data from the SCD biomarker study database using mrid as an indexer
             and also sets ASL labeling efficiency and tissue transit times appropriately
             depending on whether the participant is a control or has SCD
@@ -52,10 +52,12 @@ three_up = str((pathlib.Path(__file__) / ".." / ".." / "..").resolve())
 four_up = str((pathlib.Path(__file__) / ".." / ".." / ".." / "..").resolve())
 sys.path.append(two_up)
 
+
 import pandas as pd
 import numpy as np
 import nibabel as nib
 from fsl.wrappers import fslreorient2std, flirt, bet, epi_reg, fast, LOAD
+import redcap
 
 import helpers.registration as regi
 from helpers.conversion import parrec_to_nifti, unpack_dims
@@ -72,6 +74,7 @@ convert = 1
 reg_to_t1 = 1
 determine = 1
 
+special = ''
 for opt, arg in options:
     if opt in ('-p', '--pspecfile'):
         in_file = arg
@@ -89,11 +92,24 @@ for opt, arg in options:
         print(help_info)
         sys.exit()
 
-if 'biomarker' in special:
+if 'biomarkers' in special:
+    # pull some special SCD data
     mrid = special.split(",")[1]
+    
+    keys_folder = os.path.join(three_up, '_secret_keys') # if you downloaded this repository from github you need to make this folder yourself and add the keys
+    # it is not under version control because it is meant to store REDCap API keys
+    biomarkers_token_loc = os.path.join(keys_folder, 'biomarkers.txt')
+    
+    api_url = 'https://redcap.vanderbilt.edu/api/'
+    token = open(biomarkers_token_loc).read()
+    
+    project = redcap.Project(api_url, token)
+    project_data_raw = project.export_records()
+    project_data = pd.DataFrame(project_data_raw)
+    
+    # as of right now I actually don't know the database structure, so we can't extract data just yet
         
 if os.path.isdir(in_file):
-    # pull some special SCD data
     in_file = os.path.join(in_file, 'pattern_specs.xlsx')
     
 try:
@@ -296,40 +312,75 @@ if determine:
         loaded_template = loaded_template.set_index('arg')
         if sheet_name=='vols':
             if loaded_patterns.loc['t1']['n found']:
-                loaded_template.at['t1', 'value'] = loaded_patterns.loc['t1']['File found']
+                loaded_template.at['t1', 'value'] = os.path.join(standard_folder, 't1.nii.gz')
                 
         if sheet_name=='asl':
-            if loaded_patterns.loc['pcasl']['n found']:
-                loaded_template.at['pcasl', 'value'] = loaded_patterns.loc['pcasl']['File found']
+            if loaded_patterns.loc['asl']['n found']:
+                loaded_template.at['asl', 'value'] = os.path.join(standard_folder, 'asl.nii.gz')
                 
             if loaded_patterns.loc['aslm0']['n found']:
-                loaded_template.at['aslm0', 'value'] = loaded_patterns.loc['aslm0']['File found']
+                loaded_template.at['aslm0', 'value'] = os.path.join(standard_folder, 'aslm0.nii.gz')
                 
-            pld = 1800
-            ld = 1600
-            hct = 0.7
+            hct = 0.43
+            labeff = 0.91
+            ttt = 1.4
             
-            loaded_template.at['pld', 'value'] = pld
-            loaded_template.at['ld', 'value'] = ld
             loaded_template.at['hct', 'value'] = hct
+            loaded_template.at['labeff', 'value'] = labeff
+            loaded_template.at['ttt', 'value'] = ttt
             
-            loaded_template.at['pld', 'guessed'] = 1
-            loaded_template.at['ld', 'guessed'] = 1
             loaded_template.at['hct', 'guessed'] = 1
+            loaded_template.at['labeff', 'guessed'] = 1
+            loaded_template.at['ttt', 'guessed'] = 1
+            
+            filename_extractors = ['ld', 'pld']
+            standard_vals = [1650, 1525]
+            if loaded_patterns.loc['asl']['n found']:
+                for fne, s_val in zip(filename_extractors,standard_vals):
+                    fn = loaded_patterns.loc['asl']['File found'].lower()
+                    split = fn.split('_')
+                    has_fne = [i.replace(fne, '') for i in split if fne in i]
+                    
+                    loaded_template.at[fne, 'value'] = s_val
+                    loaded_template.at[fne, 'guessed'] = 1
+                    for hf in has_fne:
+                        try:
+                            val = float(hf)
+                            loaded_template.at[fne, 'value'] = val
+                            loaded_template.at[fne, 'guessed'] = np.nan
+                            break
+                        except ValueError: # if not a perfect match, then hf will have characters in it
+                            # we will still keep looking to see if we can find the right one
+                            pass
             
         if sheet_name=='trust':
             if loaded_patterns.loc['trust']['n found']:
-                loaded_template.at['trust', 'value'] = loaded_patterns.loc['trust']['File found']
+                loaded_template.at['trust', 'value'] = os.path.join(standard_folder, 'trust.nii.gz')
                 
-            hct=0.7
+            hct = 0.42
+            ya = 0.98 # aka artox
+            hbs = 0
             
             loaded_template.at['hct', 'value'] = hct
-
+            loaded_template.at['ya', 'value'] = ya
+            loaded_template.at['hbs', 'value'] = hbs
+            
             loaded_template.at['hct', 'guessed'] = 1
+            loaded_template.at['ya', 'guessed'] = 1
+            loaded_template.at['hbs', 'guessed'] = 1
         
         if sheet_name=='ase':
             if loaded_patterns.loc['ase']['n found']:
-                loaded_template.at['ase', 'value'] = loaded_patterns.loc['ase']['File found']
+                loaded_template.at['ase', 'value'] = os.path.join(standard_folder, 'ase.nii.gz')
+                
+            hct = 0.42
+            artox = 0.98 # aka ya
+            
+            loaded_template.at['hct', 'value'] = hct
+            loaded_template.at['artox', 'value'] = artox
+            
+            loaded_template.at['hct', 'guessed'] = 1
+            loaded_template.at['artox', 'guessed'] = 1
         
         if sheet_name=='bold':
             # not implemented
@@ -338,7 +389,7 @@ if determine:
         
         if sheet_name=='regionstats':
             if loaded_patterns.loc['t1']['n found']:
-                loaded_template.at['t1', 'value'] = loaded_patterns.loc['t1']['File found']
+                loaded_template.at['t1', 'value'] = os.path.join(standard_folder, 't1.nii.gz')
         
         
         
@@ -366,7 +417,7 @@ if determine:
     
     if guessed_vals:
         guessed = "\n\t".join(guessed_vals)
-        print(f'\nAlso, I could not find the following values, and had to guess them:\n\t{guessed}')
+        print(f'\nAlso, I could not find the following values, and had to guess them:\n\t{guessed}\n')
         
         
     writer = pd.ExcelWriter(target_espec, engine='xlsxwriter')

@@ -13,19 +13,19 @@ The script will create:
 input:
     -a / --asl : the path to the asl, which is a .nii.gz file
         There should be an associated vlabels xlsx
-    -m / --m0 : the path to the m0, which is a .nii.gz file
+    -m / --aslm0 : the path to the m0, which is a .nii.gz file
     -p - / --pld : the post-labeling delay in ms
     -l - / --ld : the labeling duration in ms
     -c - / --hct : hematocrit
         optional. used to calculate blood t1
         if not specified, blood t1 is assumed to be 1650ms (hct~=0.4345)
     -e - / --labeff : labeling efficiency
-        optional. if not specified, assumed to be 0.85
+        optional. if not specified, assumed to be 0.91
         For BOLD processing 0.85 is standard
         For SCD, 0.72
         Otherwise 0.91
     -t - / --ttt : the tissue transit time in seconds
-        optional. if not specified assumed to be 1.5
+        optional. if not specified assumed to be 1.4
         For BOLD processing 1.500 is standard
         For SCD, 1.290
         Otherwise 1.400
@@ -58,25 +58,25 @@ from processing.asl_funcs import quantify_cbf_from_asl
 
 inp = sys.argv
 bash_input = inp[1:]
-options, remainder = getopt.getopt(bash_input, "a:m:p:l:c:e:t:h", ["asl=", 'm0=', 'pld=', 'ld=', 'hct=', 'labeff=', 'ttt=', 'help'])
+options, remainder = getopt.getopt(bash_input, "a:m:p:l:c:e:t:h", ["asl=", 'aslm0=', 'pld=', 'ld=', 'hct=', 'labeff=', 'ttt=', 'help'])
 
-blood_t1 = 1650
-labeling_efficiency = 0.85
-tissue_transit_time = 1.5
+blood_t1_1 = 1.650
+labeling_efficiency = 0.91
+tissue_transit_time = 1.4
 for opt, arg in options:
     if opt in ('-a', '--asl'):
         asl_file = arg
-    if opt in ('-m', '--m0'):
+    if opt in ('-m', '--aslm0'):
         m0_file = arg
     if opt in ('-p', '--pld'):
         pld = float(arg)
         pld_s = pld/1000
     if opt in ('-l', '--ld'):
         ld = float(arg)
-        ld_s = pld/1000
+        ld_s = ld/1000
     if opt in ('-c', '--hct'):
         hct = float(arg)
-        blood_t1 = calculate_blood_t1(hct)
+        blood_t1_s = calculate_blood_t1(hct)
     if opt in ('-t', '--ttt'):
         tissue_transit_time = float(arg)
     if opt in ('-e', '--labeff'):
@@ -84,8 +84,6 @@ for opt, arg in options:
     elif opt in ('-h', '--help'):
         print(help_info)
         sys.exit()
-
-blood_t1_s = blood_t1/1000
 
 assert os.path.isfile(asl_file)
 assert os.path.isfile(m0_file)

@@ -29,8 +29,6 @@ required input:
         default is 1
     -v / --vasoase : whether the scan is VasoASE
         default is 0
-    -m / --matlab : path to your installation of matlab
-        default: /Applications/MATLAB_R2020b.app/
     -h / --help : brings up this helpful information. does not take an argument
 """
 
@@ -40,6 +38,7 @@ import sys
 import getopt
 import shutil
 import pathlib
+import subprocess
 
 import nibabel as nib
 
@@ -47,8 +46,6 @@ two_up = str((pathlib.Path(__file__) / ".." / "..").resolve())
 three_up = str((pathlib.Path(__file__) / ".." / ".." / "..").resolve())
 four_up = str((pathlib.Path(__file__) / ".." / ".." / ".." / "..").resolve())
 sys.path.append(three_up)
-
-
 ####
 
 ase_funcs_loc = os.path.join(three_up, 'processing', 'SLW_ASEproc_v4')
@@ -69,7 +66,10 @@ hctUncorr = 0.42
 RFon = 1
 vasoase=0
 
-matlab_loc = '/Applications/MATLAB_R2020b.app/'
+matlab_spec_file = os.path.join(four_up, 'bin', 'matlab_location.txt')
+
+#matlab_loc = '/Applications/MATLAB_R2020b.app/'
+matlab_loc = open(matlab_spec_file).read()
 
 for opt, arg in options:
     if opt in ('-a', '--ase'):
@@ -162,13 +162,17 @@ processing_input = (
                     f''' "cd('{ase_funcs_loc}'); ASEcheck_v7_fn_fornifti({func_args_asstr})"'''
                     )
 
+
+
 print(f'Calling MATLAB: {processing_input}')
 os.system(processing_input)
+
 
 output_suffixes = ['R2prime', 'rOEF', 'Rsquared', 'rvCBV']
 
 target_dir = os.path.join(orig_dir, 'ase')
-os.mkdir(target_dir)
+if not os.path.exists(target_dir):
+    os.mkdir(target_dir)
 
 # the MATLAB script saves files with no spatial information, so we need to reassociate it
 for suf in output_suffixes:

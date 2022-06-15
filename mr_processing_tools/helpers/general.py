@@ -261,40 +261,7 @@ def scale_parrec_data(unscaled_data, scaling_factors):
 
 
 
-def fun_pcasl_wang_tissue(x, fmdata, pdelta_a, pdelta, pw, ptau, pt1a, lab_eff):
-    # minimization function for pCASL
-    # Wang J et al. MRM 48:242-254 (2002)
-    # Note this assumes that blood water has reached the capillary exchange
-    # site
-    # note that fmdata is deltaM/M0tissue
-    
-    f = x[0] # cbf to solve for (ml/g/s)
-    a = lab_eff # labeling efficiency
-    r1t = 1/1.3 # r1 of unperfused brain tissue (s^-1)
-    lam  = 0.9 # blood brain partition coefficient (ml/g). this is lambda
-    
-    # these variables can be passed in:
-    fdelta = pdelta # the tissue transit time (s)
-    fw = pw # the post-labeling delay (s)
-    ftau = ptau # the labeling duration (s)
-    ft1a = pt1a # t1 of arterial blood water (s)
-    fdelta_a = pdelta_a # arterial arrial time (s)
-    
-    # calculate r1a of blood water
-    r1a = 1/ft1a # r1 of arterial blood water (s^-1)
-    
-    # calculate r1app (tissue relaxation rate in presence of exchanged, labeled
-    # blood water
-    r1app = r1t+f/lam
-    
-    # the kinetic model
-    term_coeff = (2*f*a/lam)
-    term_tissue = (np.e**(-fdelta*r1a)/(r1app))*(np.e**(min(fdelta-fw,0)*r1app)-np.e**((fdelta-ftau-fw)*r1app))
-    term_blood = (1/r1a)*(np.e**((min(fdelta_a-fw,0)-fdelta_a)*r1a)-np.e**((min(fdelta-fw,0)-fdelta)*r1a))
-    kinmodel = term_coeff*(term_tissue+term_blood)
-    
-    dd = np.sqrt((fmdata-kinmodel)**2) # miniize the difference between the data and them odel
-    return dd
+
 
 
 def mask_image_by_cornervals(img, box_size, thresh_mod=1):
@@ -379,7 +346,7 @@ def iterative_2d_convolutions(img, impulse_matrix):
     return convolved_img
 
 
-def wang_pcasl_func(x,fmdata,pdelta_a,pdelta,pw,ptau,pt1a):
+def wang_pcasl_func(x,fmdata,pdelta_a,pdelta,pw,ptau,pt1a,labeff):
     
     
     # Wang J et al. MRM 48:242-254 (2002)
@@ -388,7 +355,7 @@ def wang_pcasl_func(x,fmdata,pdelta_a,pdelta,pw,ptau,pt1a):
     # note that fmdata is deltaM/M0tissue
     
     f = x[0] # cbf to solve for (ml/g/s)
-    a = 0.85 # labeling efficiency
+    a = labeff # labeling efficiency
     r1t = 1/1.3 # r1 of unperfused brain tissue (s^-1)
     lambd = 0.9 # blood brain partition coefficient (ml/g). lambda
     

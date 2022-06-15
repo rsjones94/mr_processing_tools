@@ -2,6 +2,8 @@
 bin/paths.txt
 _secret_keys/
 SLW_ASEproc_v4/
+mr_processing_tools/processing/SLW_ASEproc_v4/DataDir/tempproc/Acquired 
+mr_processing_tools/processing/SLW_ASEproc_v4/DataDir/tempproc/Results 
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
