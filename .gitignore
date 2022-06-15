@@ -1,6 +1,7 @@
 # local paths
 bin/paths.txt
 _secret_keys/
+SLW_ASEproc_v4/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
