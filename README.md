@@ -13,4 +13,4 @@ After downloading this repository, you will need to:
 
 	2) Make a folder called _secret_keys and place a file called 'biomarkers.txt' in it that contains the API key for the SCD Biomarkers database. This folder is automatically excluded from version control by the .gitignore. (if you do not do this then you will not be able to call '--special biomarkers,[mrid]' in process.py) DO NOT PLACE THE API KEY IN ANY OTHER FOLDER, OR YOU WILL VERSION CONTROL IT AND EXPOSE IT TO THE PUBLIC
 
-	3) For ease of use, add /path/to/this/mr_processing_tools/mr_processing_tools/pipeline/ to your PATH so that you can call the pipeline functions (e.g., prepare.py) directly without having to specify the full path
+	3) For ease of use, add /path/to/this/mr_processing_tools/mr_processing_tools/pipeline/ to your PATH so that you can call the pipeline functions (e.g., prepare.py) directly without having to specify the full path. You may also want to add the other subfolders in this directory to your PATH, depending on your intended usecase.
