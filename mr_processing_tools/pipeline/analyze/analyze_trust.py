@@ -214,9 +214,9 @@ for signal, fit, acq, teetoo, t2range, color in zip(signals, fits, acqs, t2s, t2
     whys = signal.loc['mean']
     up = signal.loc['upper_95']
     lo = signal.loc['lower_95']
-    err = [lo, up]
+    err = [whys-lo, up-whys]
     
-    sigax.errorbar(exes, whys, yerr=err, label=f'Acquistion {acq+1} (T2={round(teetoo,3)})', capsize=2, alpha=0.7, mec='black', fmt='o', c=color, zorder=0)
+    sigax.errorbar(exes, whys, yerr=err, label=f'Acquistion {acq+1} (T2={round(teetoo,3)})', capsize=5, alpha=0.7, mec='black', fmt='o', c=color, zorder=0)
     
     fit_exes = np.arange(start=exes.min(), stop=exes.max(), step=0.0001)
     
@@ -244,6 +244,8 @@ bar_labels = [f'{mn}\nOEF: {round(oef,3)}' for mn,oef in zip(model_names,oefs)]
 bar_exes = np.arange(len(model_names))
 modax.bar(bar_exes, height=yas, color='salmon', alpha=0.6, edgecolor='black', tick_label=bar_labels, label=f'Arterial oxygenation ({yas[0]})')
 modax.bar(bar_exes, height=yvs, color='dodgerblue', alpha=0.6, edgecolor='black', tick_label=bar_labels, label='Venous oxygenation')
+
+modax.set_title(f'Hct={round(hct,3)}, HbS%={round(hbs,3)}')
 
 modax.set_ylim(0,1)
 modax.set_ylabel('Oxygenation level')

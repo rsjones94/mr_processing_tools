@@ -55,7 +55,7 @@ assert os.path.isdir(os.path.normpath(master_folder))
     # the GM and WM volume from FreeSurfer
     # the GM and WM CBF from ASL
     # mean T2 from trust, and the Yv+OEF from the HbAA model
-    # GM and WM Yv from ASE
+    # GM and WM OEF from ASE
     
 mining_folder = os.path.join(master_folder, 'biomarkers_mining')
 if not os.path.exists(mining_folder):
@@ -68,7 +68,7 @@ vols_folder = os.path.join(master_folder, 'vols')
 t1space_folder = os.path.join(master_folder, 't1space')
 
 
-variable_list = ['wm_vol', 'gm_vol', 'wm_cbf', 'gm_cbf', 'trust_t2', 'hbaa_yv', 'hbaa_oef', 'wm_yv', 'gm_yv']
+variable_list = ['wm_vol', 'gm_vol', 'wm_cbf', 'gm_cbf', 'trust_t2', 'hbaa_trust_yv', 'hbaa_trust_oef', 'wm_ase_oef', 'gm_ase_oef']
 variable_vals = {i:np.nan for i in variable_list}
 
 # get the tissue volumes
@@ -117,17 +117,63 @@ if os.path.isdir(asl_folder) and os.path.isdir(vols_folder):
         mask_data = mask_in.get_fdata().astype(int)
         
         cbf_masked = cbf.copy()
-        cbf_masked[mask_data!=1] == np.nan
+        cbf_masked[mask_data!=1] = np.nan
         meaned = np.nanmean(cbf_masked)
         
         variable_vals[f'{ttype}_cbf'] = meaned
     
     
     
+# get the T2 and HbAA model Yv+OEF
+if os.path.isdir(trust_folder):
+    trust_t2s_loc = os.path.join(trust_folder, 't2_vals.xlsx')
+    trust_models_loc = os.path.join(trust_folder, 'models.xlsx')
+    
+    trust_t2s = pd.read_excel(trust_t2s_loc)
+    trust_models = pd.read_excel(trust_models_loc).set_index('model')
+    
+    mean_t2 = np.mean(trust_t2s['t2_s'])
+    variable_vals['trust_t2'] = mean_t2
+    
+    variable_vals['hbaa_trust_yv'] = trust_models.loc['wood_aa']['yv']
+    variable_vals['hbaa_trust_oef'] = trust_models.loc['wood_aa']['oef']
     
     
+# get the ASE OEF in each tissue type. have to coregister ASE to T1, then resample
+if os.path.isdir(ase_folder) and os.path.isdir(vols_folder):
+    ase_loc = os.path.join(ase_folder, 'ASE_rOEF.nii.gz')
+    ase_in = nib.load(ase_loc)
+    
+    ase_to_t1_omat_loc = os.path.join(master_folder, 'ase_to_t1space.omat')
+    
+    target_t1_loc = os.path.join(master_folder, 't1.nii.gz')
+    target_t1_in = nib.load(target_t1_loc)
+    
+    ase_in_t1 = flirt(ase_in, ref=target_t1_in, out=LOAD,
+      applyxfm=1, init=ase_to_t1_omat_loc, interp='trilinear')['out']
+    
+    ase_in_t1 = nib.Nifti1Image(ase_in_t1.get_fdata(), target_t1_in.affine, ase_in_t1.header)
+    
+    ase_in_t1_loc = os.path.join(mining_folder, 'ase_rOEF_t1space.nii.gz')
+    nib.save(ase_in_t1, ase_in_t1_loc)
+    
+    roef = ase_in_t1.get_fdata()
+    
+    # now we can overlay the masks and cbf
+    for ttype in ['wm', 'gm']:
+        mask_loc = os.path.join(mining_folder, f'fs_mask_{ttype}_resampled.nii.gz')
+        mask_in = nib.load(mask_loc)
+        mask_data = mask_in.get_fdata().astype(int)
+        
+        roef_masked = roef.copy()
+        roef_masked[mask_data!=1] = np.nan
+        meaned = np.nanmean(roef_masked)
+        
+        variable_vals[f'{ttype}_ase_oef'] = meaned
     
     
+for key,val in variable_vals.items():
+    print(f'\t{key} : {val}')
     
     
     
