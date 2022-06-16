@@ -47,7 +47,7 @@ sys.path.append(three_up)
 import pandas as pd
 import numpy as np
 import nibabel as nib
-from fsl.wrappers import fslreorient2std, flirt, bet, epi_reg, fast, LOAD
+from fsl.wrappers import fslreorient2std, flirt, bet, epi_reg, fast, LOAD, invxfm
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
@@ -135,8 +135,14 @@ for fname in fnames:
 
 transformation_xfm_loc = os.path.join(vol_loc, 'fs', 'mri', 'transforms', 'talairach.xfm')
 transformation_omat_loc = os.path.join(vol_loc, 't1_to_talairach.omat')
+#inv_transformation_omat_loc = os.path.join(vol_loc, 't1_to_talairach.omat')
 
 xfm = read_xfm(transformation_xfm_loc, out_loc=transformation_omat_loc)
+
+#inverted_xfm = invxfm(inmat=transformation_omat_loc, omat=inv_transformation_omat_loc)
+
+# the good news is that the data saved above is actually in native space
+# the bad news is it's a resampled native space, so keep that in mind
 
 
 print(f'Tabulating volumes')
@@ -144,7 +150,7 @@ mask_globber = os.path.join(vol_loc, 'fs_mask_*.nii.gz')
 mask_locs = glob.glob(mask_globber, recursive=False)
 
 tabulation_loc = os.path.join(vol_loc, 'vol_vals.xlsx')
-cols = ['mask', 'volume_ml', 'n_voxels', 'voxelvol_ml']
+cols = ['mask', 'volume_mm3', 'n_voxels', 'voxelvol_mm3']
 tabulation_df = pd.DataFrame(columns=cols)
 
 for mask_loc in mask_locs:
@@ -157,16 +163,17 @@ for mask_loc in mask_locs:
     
     loaded = nib.load(mask_loc)
     zooms = loaded.header.get_zooms()
-    voxel_vol = np.product(zooms) # in mL
+    voxel_vol = np.product(zooms) # in mm3
     
     data = loaded.get_fdata()
     n_voxels = data.sum()
-    total_vol = n_voxels * voxel_vol # in mL
+    # this data is actually in a resampled native space, so no adjustment for linear transformation needed
+    total_vol = n_voxels * voxel_vol # in mm3
     
     mask_ser['mask'] = mask_name
-    mask_ser['volume_ml'] = total_vol
+    mask_ser['volume_mm3'] = total_vol
     mask_ser['n_voxels'] = n_voxels
-    mask_ser['voxelvol_ml'] = voxel_vol
+    mask_ser['voxelvol_mm3'] = voxel_vol
     
     tabulation_df = tabulation_df.append(mask_ser, ignore_index=True)
     

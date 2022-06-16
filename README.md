@@ -7,10 +7,12 @@ Do **not** put participant or patient data in the folder, even if they are deide
 
 After downloading this repository, you will need to:
 
-	0) pip install pycap and fslpy (you also should have an Anaconda installation of Python)
+	- pip install pycap and fslpy (you also should have an Anaconda installation of Python)
 
-	1) Make a text file called matlob_loc.txt in the /bin folder where the content is your MATLAB app location (e.g., /Applications/MATLAB_R2020b.app/) (otherwise ASE processing will not work). This file is not under version control
+	- install FreeSurfer and set your $SUBJECTS_DIR
 
-	2) Make a folder called _secret_keys and place a file called 'biomarkers.txt' in it that contains the API key for the SCD Biomarkers database. This folder is automatically excluded from version control by the .gitignore. (if you do not do this then you will not be able to call '--special biomarkers,[mrid]' in process.py) DO NOT PLACE THE API KEY IN ANY OTHER FOLDER, OR YOU WILL VERSION CONTROL IT AND EXPOSE IT TO THE PUBLIC
+	- Make a text file called matlob_loc.txt in the /bin folder where the content is your MATLAB app location (e.g., /Applications/MATLAB_R2020b.app/) (otherwise ASE processing will not work). This file is not under version control
 
-	3) For ease of use, add /path/to/this/mr_processing_tools/mr_processing_tools/pipeline/ to your PATH so that you can call the pipeline functions (e.g., prepare.py) directly without having to specify the full path. You may also want to add the other subfolders in this directory to your PATH, depending on your intended usecase.
+	- Make a folder called _secret_keys and place a file called 'biomarkers.txt' in it that contains the API key for the SCD Biomarkers database. This folder is automatically excluded from version control by the .gitignore. (if you do not do this then you will not be able to call '--special biomarkers,[mrid]' in process.py) DO NOT PLACE THE API KEY IN ANY OTHER FOLDER, OR YOU WILL VERSION CONTROL IT AND EXPOSE IT TO THE PUBLIC
+
+	- For ease of use, add /path/to/this/mr_processing_tools/mr_processing_tools/pipeline/ to your PATH so that you can call the pipeline functions (e.g., prepare.py) directly without having to specify the full path. You may also want to add the other subfolders in this directory to your PATH, depending on your intended usecase.
