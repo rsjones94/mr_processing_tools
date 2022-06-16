@@ -1,0 +1,2 @@
+This is where ASE processing occurs
+Do not delete, this file keeps this folder under version control
