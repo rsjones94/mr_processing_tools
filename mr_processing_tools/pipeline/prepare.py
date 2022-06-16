@@ -228,6 +228,8 @@ if convert:
                              out_vlabels=vlabels_loc, reorient=True)
         else:
             raise NotImplementedError('Filetype not supported')
+            # for anyone seeking to implement DICOM compatibility,
+            # pydicom is a good utility to start with for conversion purposes 
             
                     
 # converts the files to T1 space (if specified)

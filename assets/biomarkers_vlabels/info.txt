@@ -1,0 +1,5 @@
+As of 06/16/2022, these vlabels should be compatible with NiFTI versions of the Biomarkers scans. If you are downloading straight NiFTis (rather than PARRECs) then you will need to put these files in the folder along with the NiFTIs in order to process them with the analyze tools.
+
+However, NiFTI is not standardized and depending on where you get your NiFTIs from (e.g., gStudy vs a converted DICOM), the volume labels may be in a different order than expected. Inspect your data to make sure the vlabels are compatible!
+
+If you are using PARRECs, don't worry about this. The vlabels are generated automatically and correctly for you.
