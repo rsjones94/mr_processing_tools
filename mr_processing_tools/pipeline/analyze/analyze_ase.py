@@ -19,6 +19,7 @@ required input:
     -c / --hct : the hematocrit as a float between 0 and 1
         default is 0.42
     -b / --artox : the arterial oxygen saturation as a float between 0 and 1
+        default is 0.98
     -x / --tr : the repetition time in ms
         default is 4400
     -y / --te1 : the first echo time in ms
@@ -40,7 +41,10 @@ import shutil
 import pathlib
 import subprocess
 
+import numpy as np
+import matplotlib.pyplot as plt
 import nibabel as nib
+from scipy.stats import mode
 
 two_up = str((pathlib.Path(__file__) / ".." / "..").resolve())
 three_up = str((pathlib.Path(__file__) / ".." / ".." / "..").resolve())
@@ -50,7 +54,8 @@ sys.path.append(three_up)
 
 ase_funcs_loc = os.path.join(three_up, 'processing', 'SLW_ASEproc_v4')
 sys.path.append(ase_funcs_loc)
-print(f'Funcs loc: {ase_funcs_loc}')
+
+
 
 inp = sys.argv
 bash_input = inp[1:]
@@ -62,6 +67,7 @@ TE1 = 64
 TE2 = 107
 
 hctUncorr = 0.42
+artox=0.98
 
 RFon = 1
 vasoase=0
@@ -169,13 +175,18 @@ os.system(processing_input)
 
 
 output_suffixes = ['R2prime', 'rOEF', 'Rsquared', 'rvCBV']
+cmaps = ['inferno', 'viridis', 'Reds', 'plasma']
 
 target_dir = os.path.join(orig_dir, 'ase')
 if not os.path.exists(target_dir):
     os.mkdir(target_dir)
 
 # the MATLAB script saves files with no spatial information, so we need to reassociate it
-for suf in output_suffixes:
+# we can also make our qc plot at the same time
+qc_plot_loc = os.path.join(target_dir, 'ase_qualitycontrol.png')
+fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12,12))
+axs = np.ravel(axs)
+for suf,ax,cmap in zip(output_suffixes,axs,cmaps):
     file_base = f'{ase_base_noext}_{suf}.nii.gz'
     orig = os.path.join(temp_folder, 'Results', file_base)
     target_file = os.path.join(target_dir, file_base)
@@ -187,10 +198,36 @@ for suf in output_suffixes:
         yv = 1 - the_data
         oef = (artox - yv) / artox
         the_data = oef
+        
+        # we can also use this to make a Yv map
+        yv_im = nib.Nifti1Image(yv, ase_loaded.affine, header=ase_loaded.header)
+        yv_base = f'{ase_base_noext}_yv.nii.gz'
+        target_yv = os.path.join(target_dir, yv_base)
+        
     
     new_im = nib.Nifti1Image(the_data, ase_loaded.affine, header=ase_loaded.header)
     
+    bgval = mode(np.ravel(the_data))[0][0]
+    
+    the_data_nanned = the_data.copy()
+    the_data_nanned[np.isclose(the_data,bgval)] = np.nan
+    
+    minner = np.nanpercentile(the_data_nanned,5)
+    maxxer = np.nanpercentile(the_data_nanned,95)
+    
+    data_shape = the_data.shape
+    z_ind = int(data_shape[2]/2)
+    the_data_slice = the_data[:,:,z_ind]
+    
+    pos = ax.imshow(the_data_slice, cmap=cmap, vmin=minner, vmax=maxxer)
+    ax.set_title(suf)
+    
+    cbar = fig.colorbar(pos, ax=ax)
+    #cbar.set_label(suf)
+    
     nib.save(new_im, target_file)
 
+fig.tight_layout()
+fig.savefig(qc_plot_loc, dpi=400)
 
 

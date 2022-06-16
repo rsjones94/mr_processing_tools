@@ -48,14 +48,13 @@ import pandas as pd
 import numpy as np
 import nibabel as nib
 from fsl.wrappers import fslreorient2std, flirt, bet, epi_reg, fast, LOAD
+import matplotlib.pyplot as plt
 
 import helpers.registration as regi
 from helpers.conversion import parrec_to_nifti, unpack_dims
 from helpers.general import read_xfm, calculate_blood_t1
 from processing.asl_funcs import quantify_cbf_from_asl
 ####
-
-
 inp = sys.argv
 bash_input = inp[1:]
 options, remainder = getopt.getopt(bash_input, "a:m:p:l:c:e:t:h", ["asl=", 'aslm0=', 'pld=', 'ld=', 'hct=', 'labeff=', 'ttt=', 'help'])
@@ -122,3 +121,39 @@ cbf_out_loc = os.path.join(asl_loc, 'cbf.nii.gz')
 cbf_out = nib.Nifti1Image(cbf_map, asl_in.affine, asl_in.header)
 
 nib.save(cbf_out, cbf_out_loc)
+
+### qc
+qc_out_loc = os.path.join(asl_loc, 'asl_qualitycontrol.png')
+fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(6,12))
+
+pdims = asl_in.header['pixdim'][1:4] # relevant for setting pixel aspect ratio for dims
+
+cbf_shape = cbf_map.shape
+x_half = int(cbf_shape[0]/2)
+y_half = int(cbf_shape[1]/2)
+z_half = int(cbf_shape[2]/2)
+
+ax_slice = cbf_map[:,:,z_half]
+cor_slice = cbf_map[:,y_half,:]
+sag_slice = cbf_map[x_half,:,:]
+
+ax_aspect = pdims[0] / pdims[1]
+cor_aspect = pdims[0] / pdims[2]
+sag_aspect = pdims[1] / pdims[2]
+
+slices = [ax_slice, sag_slice, cor_slice]
+slice_names = ['ax', 'sag', 'cor']
+aspects = [ax_aspect, sag_aspect, cor_aspect]
+
+minner = 0
+maxer = np.percentile(cbf_map, 98)
+
+for sli, sln, ax, asp in zip(slices, slice_names, axs, aspects):
+    pos = ax.imshow(sli, cmap='magma', aspect=asp, vmin=minner, vmax=maxer)
+    ax.set_title(sln)
+
+cbar = fig.colorbar(pos, ax=axs[0])
+cbar.set_label('CBF (ml/100g/min)')
+
+fig.tight_layout()
+fig.savefig(qc_out_loc, dpi=400)

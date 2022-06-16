@@ -55,6 +55,7 @@ import pandas as pd
 import numpy as np
 import nibabel as nib
 from fsl.wrappers import fslreorient2std, flirt, bet, epi_reg, fast, LOAD
+import matplotlib.pyplot as plt
 
 import helpers.registration as regi
 from helpers.conversion import parrec_to_nifti, unpack_dims
@@ -62,6 +63,8 @@ from helpers.general import read_xfm, calculate_blood_t1
 from processing.trust_funcs import t2_from_trust
 import helpers.oxsat_models as osm
 ####
+
+
 
 inp = sys.argv
 bash_input = inp[1:]
@@ -136,7 +139,7 @@ trust_unpacked = unpack_dims(trust_data, vlabels_ordered)
 trust_clean = trust_unpacked[:,:,0,:,:] # dim 3 (z) should be a singleton
 
 
-t2s, signals, fits = t2_from_trust(trust_clean,
+t2s, signals, fits, t2_ranges = t2_from_trust(trust_clean,
                                    blood_t1,
                                    ete=etes, 
                                    auto=auto,
@@ -197,13 +200,59 @@ model_df['oef'] = oefs
 
 model_df.to_excel(model_file)
 
+## now make a nice plot showing this data for QC purposes
+# just a 1x2 plot, first showing the decay curve w/ error, then bar plots of the Yv
 
+fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(8,12))
+
+sigax = axs[0]
+modax = axs[1]
+
+colors = ['black', 'firebrick', 'orange', 'dodgerblue', 'forestgreen']
+for signal, fit, acq, teetoo, t2range, color in zip(signals, fits, acqs, t2s, t2_ranges, colors):
+    exes = signal.loc['echo_time']
+    whys = signal.loc['mean']
+    up = signal.loc['upper_95']
+    lo = signal.loc['lower_95']
+    err = [lo, up]
+    
+    sigax.errorbar(exes, whys, yerr=err, label=f'Acquistion {acq+1} (T2={round(teetoo,3)})', capsize=2, alpha=0.7, mec='black', fmt='o', c=color, zorder=0)
+    
+    fit_exes = np.arange(start=exes.min(), stop=exes.max(), step=0.0001)
+    
+    fit_mean =  fit.loc['value']['coefficient']*np.exp(-(fit_exes/1000)/teetoo)
+    fit_up = fit.loc['upper_95']['coefficient']*np.exp(-(fit_exes/1000)/t2range[1])
+    fit_lo = fit.loc['lower_95']['coefficient']*np.exp(-(fit_exes/1000)/t2range[0])
+    
+    sigax.plot(fit_exes, fit_mean, c=color, alpha=0.4)
+    sigax.plot(fit_exes, fit_up, ls='--', c=color, alpha=0.3)
+    sigax.plot(fit_exes, fit_lo, ls='--', c=color, alpha=0.3)
     
     
+sigax.legend()
+sigax.set_title(f'Mean T2={round(mean_t2,3)}')
+sigax.set_xlabel('Effective echo time (ms)')
+sigax.set_ylabel('Signal (a.u.)')
+sigax.set_aspect(1.0/sigax.get_data_ratio(), adjustable='box')
     
-    
-    
-    
+model_names = model_df['model']
+yvs = model_df['yv']
+yas = model_df['ya']
+oefs = model_df['oef']
+
+bar_labels = [f'{mn}\nOEF: {round(oef,3)}' for mn,oef in zip(model_names,oefs)]
+bar_exes = np.arange(len(model_names))
+modax.bar(bar_exes, height=yas, color='salmon', alpha=0.6, edgecolor='black', tick_label=bar_labels, label=f'Arterial oxygenation ({yas[0]})')
+modax.bar(bar_exes, height=yvs, color='dodgerblue', alpha=0.6, edgecolor='black', tick_label=bar_labels, label='Venous oxygenation')
+
+modax.set_ylim(0,1)
+modax.set_ylabel('Oxygenation level')
+modax.legend()
+
+
+fig.tight_layout()
+qc_file = os.path.join(trust_loc, 'trust_qualitycontrol.png')
+fig.savefig(qc_file, dpi=400)
     
     
 

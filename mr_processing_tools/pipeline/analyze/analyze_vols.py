@@ -48,6 +48,8 @@ import pandas as pd
 import numpy as np
 import nibabel as nib
 from fsl.wrappers import fslreorient2std, flirt, bet, epi_reg, fast, LOAD
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 import helpers.registration as regi
 from helpers.conversion import parrec_to_nifti, unpack_dims
@@ -171,4 +173,53 @@ for mask_loc in mask_locs:
     
 tabulation_df.to_excel(tabulation_loc, index=False)
 
+
+# qc
+
+plt.style.use('dark_background')
+
+mask_vars = ['mask_gm', 'mask_wm']
+mask_colors = ['red', 'white']
+qc_loc = os.path.join(vol_loc, 'vols_qualitycontrol.png')
+fig, axs = plt.subplots(nrows=3, ncols=2, figsize=(8,12))
+
+brain_loc = os.path.join(vol_loc, f'fs_brain.nii.gz')
+brain_loaded = nib.load(brain_loc)
+brain_data = brain_loaded.get_fdata()
+brain_shape = brain_data.shape
+
+allslice = [slice(None)] * 3
+slice_axes = [0,1,2]
+
+for i, (slax, axrow) in enumerate(zip(slice_axes, axs)):
+    slc = allslice.copy()
+    slc[slax] = int(brain_shape[slax]/2)+10
+    brain_sliced = brain_data[slc]
+    axrow[0].imshow(brain_sliced, cmap='gist_gray')
+    axrow[1].imshow(brain_sliced, cmap='gist_gray')
     
+    for mv, mc in zip(mask_vars, mask_colors):
+        mask_loc = os.path.join(vol_loc, f'fs_{mv}.nii.gz')
+        mask_loaded = nib.load(mask_loc)
+        mask_data = mask_loaded.get_fdata()
+        mask_slice = mask_data[slc]
+        
+        booled = (mask_slice==1).astype(float)
+        booled[booled<1] = np.nan
+        
+        #my_cmap = copy.copy(plt.cm.get_cmap(val_dict['color'])) # get a copy of the gray color map
+        my_cmap = mpl.colors.ListedColormap([mc, mc])
+        my_cmap.set_bad(alpha=0) # set how the colormap handles 'bad' values
+        axrow[1].imshow(booled, cmap=my_cmap, vmin=0.5, vmax=1.5, alpha=0.35, interpolation='nearest')
+        
+    if i==0:
+        axrow[0].set_title('Talairach-space extracted brain')
+        axrow[1].set_title('FS segmentation')
+        
+
+for ax in np.ravel(axs):
+    ax.axis('off')
+    
+
+fig.tight_layout()
+fig.savefig(qc_loc, dpi=400)

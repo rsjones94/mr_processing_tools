@@ -253,7 +253,11 @@ def calculate_t2_from_decay(trust_avg_sag, ete, blood_t1):
     
     # Compute Blood T2
     blood_t2 = 1 / ((1 / blood_t1) - trust_c)
-    return blood_t2, fit, fit_ci
+    blood_t2_upper = 1 / ((1 / blood_t1) - fit_upper[0])
+    blood_t2_lower = 1 / ((1 / blood_t1) - fit_lower[0])
+    blood_t2_range = [blood_t2_lower, blood_t2_upper]
+    
+    return blood_t2, fit, fit_ci, blood_t2_range
     
 
 
@@ -313,6 +317,7 @@ def t2_from_trust(trust_data, blood_t1, ete=[0, 40, 80, 160], auto=True, overrid
     trust_t2 = []
     trust_signals = []
     trust_fits = []
+    t2_ranges = []
     
     
     if override_inversions is None:
@@ -340,7 +345,7 @@ def t2_from_trust(trust_data, blood_t1, ete=[0, 40, 80, 160], auto=True, overrid
         signals['signal'] = ['echo_time', 'mean', 'lower_95', 'upper_95']
         signals = signals.set_index('signal')
         
-        blood_t2, fit, fit_ci = calculate_t2_from_decay(sss_signal_diffs, ete, blood_t1)
+        blood_t2, fit, fit_ci, t2_range = calculate_t2_from_decay(sss_signal_diffs, ete, blood_t1)
         
         fit_params.loc[0] = fit
         fit_params.loc[1] = fit_ci[0]
@@ -351,8 +356,8 @@ def t2_from_trust(trust_data, blood_t1, ete=[0, 40, 80, 160], auto=True, overrid
         trust_t2.append(blood_t2)
         trust_signals.append(signals)
         trust_fits.append(fit_params)
+        t2_ranges.append(np.asarray(t2_range))
         
-        
-    return np.asarray(trust_t2), trust_signals, trust_fits
+    return np.asarray(trust_t2), trust_signals, trust_fits, np.asarray(t2_ranges)
 
 

@@ -38,6 +38,11 @@ input:
             This pulls data from the SCD biomarker study database using mrid as an indexer
             and also sets ASL labeling efficiency and tissue transit times appropriately
             depending on whether the participant is a control or has SCD
+            
+            Alternatively, biomarkers,control will use parameters for a generic control,
+            and biomarkers,scd will use parameters for a generic participant with SCD.
+            As of now, all that is changed is that biomarkers,scd will set the labeling efficiency to
+            0.72 (from 0.91), the ttt to 1.29 (from 1.4) and the hbs to 0.5 (from 0)
     -h / --help : brings up this helpful information. does not take an argument
 """
 
@@ -58,6 +63,7 @@ import numpy as np
 import nibabel as nib
 from fsl.wrappers import fslreorient2std, flirt, bet, epi_reg, fast, LOAD
 import redcap
+import matplotlib.pyplot as plt
 
 import helpers.registration as regi
 from helpers.conversion import parrec_to_nifti, unpack_dims
@@ -92,22 +98,34 @@ for opt, arg in options:
         print(help_info)
         sys.exit()
 
+is_biomarker_control = 0
+is_biomarker_scd = 0
 if 'biomarkers' in special:
     # pull some special SCD data
-    mrid = special.split(",")[1]
+    splt = special.split(",")
+    second = splt[1]
     
-    keys_folder = os.path.join(three_up, '_secret_keys') # if you downloaded this repository from github you need to make this folder yourself and add the keys
-    # it is not under version control because it is meant to store REDCap API keys
-    biomarkers_token_loc = os.path.join(keys_folder, 'biomarkers.txt')
-    
-    api_url = 'https://redcap.vanderbilt.edu/api/'
-    token = open(biomarkers_token_loc).read()
-    
-    project = redcap.Project(api_url, token)
-    project_data_raw = project.export_records()
-    project_data = pd.DataFrame(project_data_raw)
-    
-    # as of right now I actually don't know the database structure, so we can't extract data just yet
+    if second == 'control':
+        print('Using control parameters for Biomarkers study (note that these are identical to default parameters)')
+        is_biomarker_control = 1
+    elif second == 'scd':
+        print('Using generic SCD parameters for Biomarkers study (shortened TTT, reduced labeling efficiency, guess of hbs=0.5)')
+        is_biomarker_scd = 1
+    else:
+        print(f'Attempting to pull data from REDCap for {second}')
+        raise NotImplementedError
+        keys_folder = os.path.join(three_up, '_secret_keys') # if you downloaded this repository from github you need to make this folder yourself and add the keys
+        # it is not under version control because it is meant to store REDCap API keys
+        biomarkers_token_loc = os.path.join(keys_folder, 'biomarkers.txt')
+        
+        api_url = 'https://redcap.vanderbilt.edu/api/'
+        token = open(biomarkers_token_loc).read()
+        
+        project = redcap.Project(api_url, token)
+        project_data_raw = project.export_records()
+        project_data = pd.DataFrame(project_data_raw)
+        
+        # as of right now I actually don't know the database structure, so we can't extract data just yet
         
 if os.path.isdir(in_file):
     in_file = os.path.join(in_file, 'pattern_specs.xlsx')
@@ -287,6 +305,52 @@ if reg_to_t1:
         
         flirt(scan_location, ref=t1_location, out=scan_location_in_t1space,
               applyxfm=1, init=omat_location, interp='trilinear')
+        
+        
+        # qc
+        plt.style.use('dark_background')
+        qc_location = os.path.join(t1space_folder, f'{scan_type}_to_t1_qualitycontrol.png')
+        
+        t1_loaded = nib.load(t1_location_betted)
+        t1_data = t1_loaded.get_fdata()
+        brain_shape = t1_data.shape
+        
+        target_loaded = nib.load(scan_location_in_t1space)
+        target_data = target_loaded.get_fdata()
+        target_shape = target_data.shape
+        
+        n_extradims = len(target_shape) - len(brain_shape)
+        
+        allslice = [slice(None)] * 3
+        slice_axes = [0,1,2]
+        
+        fig, axs = plt.subplots(nrows=3, ncols=3, figsize=(8,12))
+        for i, (slax, axrow) in enumerate(zip(slice_axes, axs)):
+            slc = allslice.copy()
+            slc[slax] = int(brain_shape[slax]/2)+10
+            
+            brain_sliced = t1_data[slc]
+            axrow[0].imshow(brain_sliced, cmap='gist_gray')
+            axrow[1].imshow(brain_sliced, cmap='gist_gray')
+            
+            target_slc = slc.copy()
+            for i in range(n_extradims):
+                target_slc.append(1) # for each extra dimension we need to make sure to just take the 0th element
+            target_sliced = target_data[target_slc]
+            axrow[1].imshow(target_sliced, cmap='inferno', alpha=0.5)
+            axrow[2].imshow(target_sliced, cmap='inferno')
+            
+            if i==0:
+                axrow[0].set_title('BETted T1')
+                axrow[1].set_title('Overlap')
+                axrow[2].set_title(f'Registered {scan_type}')
+                
+                
+        for ax in np.ravel(axs):
+            ax.axis('off')
+        
+        plt.tight_layout()
+        fig.savefig(qc_location, dpi=400)
 
     
 if determine:
@@ -321,9 +385,13 @@ if determine:
             if loaded_patterns.loc['aslm0']['n found']:
                 loaded_template.at['aslm0', 'value'] = os.path.join(standard_folder, 'aslm0.nii.gz')
                 
-            hct = 0.43
+            hct = 0.42
             labeff = 0.91
             ttt = 1.4
+            
+            if is_biomarker_scd:
+                labeff = 0.72
+                ttt = 1.29
             
             loaded_template.at['hct', 'value'] = hct
             loaded_template.at['labeff', 'value'] = labeff
@@ -361,6 +429,9 @@ if determine:
             ya = 0.98 # aka artox
             hbs = 0
             
+            if is_biomarker_scd:
+                hbs = 0.5
+            
             loaded_template.at['hct', 'value'] = hct
             loaded_template.at['ya', 'value'] = ya
             loaded_template.at['hbs', 'value'] = hbs
@@ -387,9 +458,6 @@ if determine:
             updated_dfs.append(None)
             continue
         
-        if sheet_name=='regionstats':
-            if loaded_patterns.loc['t1']['n found']:
-                loaded_template.at['t1', 'value'] = os.path.join(standard_folder, 't1.nii.gz')
         
         
         
