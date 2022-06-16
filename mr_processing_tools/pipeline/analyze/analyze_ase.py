@@ -107,6 +107,11 @@ assert type(artox) == float
 temp_folder = os.path.join(ase_funcs_loc, 'DataDir', 'tempproc')
 acq_folder = os.path.join(temp_folder, 'Acquired')
 
+note_loc = os.path.join(temp_folder, 'note.txt')
+note_content = 'This is where ASE processing occurs\nDo not delete, this file keeps this folder under version control'
+with open(note_loc, 'w') as f:
+    f.write(note_content)
+
 orig_dir = os.path.dirname(os.path.normpath(ase_file))
 
 ase_base = 'ASE.nii.gz'
