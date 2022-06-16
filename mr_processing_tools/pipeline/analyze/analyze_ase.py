@@ -203,6 +203,7 @@ for suf,ax,cmap in zip(output_suffixes,axs,cmaps):
         yv_im = nib.Nifti1Image(yv, ase_loaded.affine, header=ase_loaded.header)
         yv_base = f'{ase_base_noext}_yv.nii.gz'
         target_yv = os.path.join(target_dir, yv_base)
+        nib.save(yv_im, target_yv)
         
     
     new_im = nib.Nifti1Image(the_data, ase_loaded.affine, header=ase_loaded.header)
