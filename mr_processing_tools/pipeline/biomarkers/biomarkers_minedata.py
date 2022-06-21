@@ -6,10 +6,11 @@
 
 help_info = """
 This script takes the data for a processed Biomarkers participant and
-collates the data into a CSV suitable for pushing to REDCap
+collates the data into a CSV suitable for pushing to REDCap. Writes 'mineddata.csv'
+to the input folder.
 
 input:
-    -f / --folder : the path to the master folder
+    -f / --folder : the path to the master folder. should be the 'standard' folder
     -h / --help : brings up this helpful information. does not take an argument
 """
 
@@ -68,7 +69,8 @@ vols_folder = os.path.join(master_folder, 'vols')
 t1space_folder = os.path.join(master_folder, 't1space')
 
 
-variable_list = ['wm_vol', 'gm_vol', 'wm_cbf', 'gm_cbf', 'trust_t2', 'hbaa_trust_yv', 'hbaa_trust_oef', 'wm_ase_oef', 'gm_ase_oef']
+variable_list = ['wm_totalvol', 'gm_totalvol', 'wm_mean_cbf', 'gm_mean_cbf', 't2_relaxation_rate1', 't2_relaxation_rate2', 't2_relaxationrate_mean',
+                 'aa_model_venous_oxygen_sat', 'aa_model_whole_oef', 'wm_oef_ase', 'gm_oef_ase']
 variable_vals = {i:np.nan for i in variable_list}
 
 # get the tissue volumes
@@ -81,7 +83,7 @@ if os.path.isdir(vols_folder):
     volvals = pd.read_excel(volvals_loc).set_index('mask')
     
     for ttype in ['wm', 'gm']:
-        variable_vals[f'{ttype}_vol'] = volvals.loc[ttype]['volume_mm3'] / 1000 # convert to mL
+        variable_vals[f'{ttype}_totalvol'] = volvals.loc[ttype]['volume_mm3'] / 1000 # convert to mL
         
         mask_loc = os.path.join(vols_folder, f'fs_mask_{ttype}.nii.gz')
         mask_in = nib.load(mask_loc)
@@ -120,7 +122,7 @@ if os.path.isdir(asl_folder) and os.path.isdir(vols_folder):
         cbf_masked[mask_data!=1] = np.nan
         meaned = np.nanmean(cbf_masked)
         
-        variable_vals[f'{ttype}_cbf'] = meaned
+        variable_vals[f'{ttype}_mean_cbf'] = meaned
     
     
     
@@ -132,11 +134,15 @@ if os.path.isdir(trust_folder):
     trust_t2s = pd.read_excel(trust_t2s_loc)
     trust_models = pd.read_excel(trust_models_loc).set_index('model')
     
-    mean_t2 = np.mean(trust_t2s['t2_s'])
-    variable_vals['trust_t2'] = mean_t2
     
-    variable_vals['hbaa_trust_yv'] = trust_models.loc['wood_aa']['yv']
-    variable_vals['hbaa_trust_oef'] = trust_models.loc['wood_aa']['oef']
+    variable_vals['t2_relaxation_rate1'] = trust_t2s['t2_s'][0]
+    variable_vals['t2_relaxation_rate2'] = trust_t2s['t2_s'][1]
+    
+    mean_t2 = np.mean(trust_t2s['t2_s'])
+    variable_vals['t2_relaxationrate_mean'] = mean_t2
+    
+    variable_vals['aa_model_venous_oxygen_sat'] = trust_models.loc['wood_aa']['yv']
+    variable_vals['aa_model_whole_oef'] = trust_models.loc['wood_aa']['oef']
     
     
 # get the ASE OEF in each tissue type. have to coregister ASE to T1, then resample
@@ -159,7 +165,7 @@ if os.path.isdir(ase_folder) and os.path.isdir(vols_folder):
     
     roef = ase_in_t1.get_fdata()
     
-    # now we can overlay the masks and cbf
+    # now we can overlay the masks and ASE
     for ttype in ['wm', 'gm']:
         mask_loc = os.path.join(mining_folder, f'fs_mask_{ttype}_resampled.nii.gz')
         mask_in = nib.load(mask_loc)
@@ -169,13 +175,16 @@ if os.path.isdir(ase_folder) and os.path.isdir(vols_folder):
         roef_masked[mask_data!=1] = np.nan
         meaned = np.nanmean(roef_masked)
         
-        variable_vals[f'{ttype}_ase_oef'] = meaned
+        variable_vals[f'{ttype}_oef_ase'] = meaned
     
     
 for key,val in variable_vals.items():
     print(f'\t{key} : {val}')
     
     
+out_loc = os.path.join(master_folder, 'mineddata.csv')
+variable_vals = pd.Series(variable_vals, name='values')
+variable_vals.to_csv(out_loc)
     
     
     
