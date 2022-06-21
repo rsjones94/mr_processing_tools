@@ -12,7 +12,7 @@ Writes the data to a file called redcap_pull.xlsx in the specified folder.
 
 input:
     -m / mrid : the participant's MR ID in the Biomarker's database (e.g., Jordan_1050 or an accession number, depending on where the scan was)
-    -f / --folder : the folder to write redcap_pull.xlsx to
+    -f / --folder : the folder to write redcap_pull.xlsx to. Generally, this should be the 'standard' folder
     -h / --help : brings up this helpful information. does not take an argument
 """
 
@@ -114,6 +114,7 @@ for cf in conv_to_frac:
     except ValueError:
         pass
 
+print(f'The study ID is {sid}, and the MRID was found in {idco}.')
 
 print('I found these values:')
 for key,val in the_data_renamed.items():
