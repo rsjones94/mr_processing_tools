@@ -7,13 +7,13 @@
 help_info = """
 This script replaces strings in both the body and names of all files in a folder.
 Be careful to not pass strings the represent non-patient data, as you may compromise the integrity of the file by replacing them
-However, this script will create a /bak folder with bakups up the original files. Note that the backups will obviously
+However, this script will create a /bak folder with backups up the original files. Note that the backups will obviously
 not be deidentified, so they should be deleted or moved before sharing.
 
 input:
     -f / --folder : the folder to deidentify
     -t / --target : the target string to replace
-        Default is AUTO, which will attempt to find the name as delimited in the filename by a double carat (^^)
+        Default is AUTO, which will attempt to find the name as delimited in the filename by a double carat (^^, inclusive)
         Otherwise, pass a string or you can pass multiple strings to replace by delimiting them with commas, e.g., str1,str2,str3
     -r / --replacement : the string to replace the target with
         default is nothing, i.e., ''

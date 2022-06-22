@@ -178,6 +178,8 @@ if os.path.isdir(ase_folder) and os.path.isdir(vols_folder):
         variable_vals[f'{ttype}_oef_ase'] = meaned
     
     
+
+    
 for key,val in variable_vals.items():
     print(f'\t{key} : {val}')
     

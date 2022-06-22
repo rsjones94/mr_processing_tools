@@ -11,8 +11,8 @@ Note that it just pulls the data for one particular scan date for a patient, not
 Writes the data to a file called redcap_pull.xlsx in the specified folder.
 
 input:
-    -m / mrid : the participant's MR ID in the Biomarker's database (e.g., Jordan_1050 or an accession number, depending on where the scan was)
-    -f / --folder : the folder to write redcap_pull.xlsx to. Generally, this should be the 'standard' folder
+    -m / --mrid : the participant's MR ID in the Biomarker's database (e.g., Jordan_1050 or an accession number, depending on where the scan was)
+    -f / --folder : the folder to write redcap_pull.xlsx to. Generally, this should be the folder of raw scans.
     -h / --help : brings up this helpful information. does not take an argument
 """
 
@@ -40,13 +40,13 @@ from nibabel import processing
 
 inp = sys.argv
 bash_input = inp[1:]
-options, remainder = getopt.getopt(bash_input, "f:s:h", ["folder=", 'studyid=', 'help'])
+options, remainder = getopt.getopt(bash_input, "f:m:h", ["folder=", 'mrid=', 'help'])
 
 
 for opt, arg in options:
     if opt in ('-f', '--folder'):
         out_folder = arg
-    if opt in ('-s', '--studyid'):
+    if opt in ('-m', '--mrid'):
         mrid = arg
     elif opt in ('-h', '--help'):
         print(help_info)

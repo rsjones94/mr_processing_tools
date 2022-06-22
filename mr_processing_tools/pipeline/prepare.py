@@ -140,13 +140,13 @@ hbs_guessed = 1
 
 pulled = False
 if special=='usepull':
-    pull_loc = os.path.join(data_folder)
+    pull_loc = os.path.join(data_folder, 'redcap_pull.xlsx')
     if not os.path.exists(pull_loc):
         raise Exception(f'You specified to use a REDCap pull file, but {pull_loc} does not exist.')
     
     pulled_data = pd.read_excel(pull_loc).set_index('Unnamed: 0')
     
-    if pulled_data.loc['study_group'][0]==1:
+    if pulled_data.loc['study_group'][0] in [1,2,3]: # SS, BetaThal and SC
         # then this is a SCD participant
         labeff = 0.72
         ttt = 1.29
